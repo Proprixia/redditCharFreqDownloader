@@ -15,12 +15,12 @@ size_t downloadToMem(void * incoming, size_t size, size_t nmembs, struct memory 
     return (size * nmembs);
 }
 
-void baseRequest(struct memory * pageDL, char * targetURL, char * postFields, struct curl_slist * httpHeaders) {
+void baseRequest(struct memory * pageDL, char * targetURL, char * postFields, struct curl_slist * httpHeaders, struct json_object * configFile) {
     CURL * request;
     CURLcode res;
     struct json_object * loginInfo;
 
-    loginInfo = json_object_from_file("login.json");
+    loginInfo = json_object_from_file(json_object_get_string(json_object_object_get(configFile, "loginFile")));
 
     curl_global_init(CURL_GLOBAL_ALL);
     request = curl_easy_init();
@@ -54,12 +54,12 @@ void baseRequest(struct memory * pageDL, char * targetURL, char * postFields, st
     json_object_put(loginInfo);
 }
 
-struct memory * getToken() {
+struct memory * getToken(struct json_object * configFile) {
     int request_time;
     struct json_object * tokenRoot;
     struct memory * access_token;
 
-    tokenRoot = json_object_from_file("token.json");
+    tokenRoot = json_object_from_file(json_object_get_string(json_object_object_get(configFile, "tokenFile")));
     request_time = json_object_get_int(json_object_object_get(tokenRoot, "request_time"));
 
     CREATEMEMSTRUCT(access_token, char);
@@ -76,7 +76,7 @@ struct memory * getToken() {
         CATSTRTOMEMORYSTRUCT(postFields, "grant_type=refresh_token&refresh_token=");
         CATSTRTOMEMORYSTRUCT(postFields, json_object_get_string(json_object_object_get(tokenRoot, "refresh_token")));
 
-        baseRequest(pageDL, targetURL, postFields->contents, NULL);
+        baseRequest(pageDL, targetURL, postFields->contents, NULL, configFile);
         
         if (pageDL->size != 1) {
             tokenDLRoot = json_tokener_parse(pageDL->contents);
@@ -98,14 +98,14 @@ struct memory * getToken() {
     return access_token;
 }
 
-struct json_object * httpRequest(char * targetURL) {
+struct json_object * httpRequest(char * targetURL, struct json_object * configFile) {
     printf("%s\n", targetURL);
     struct curl_slist * httpHeader;
     struct memory * accessToken;
     struct memory * authHeader;
     struct memory * pageDL;
 
-    accessToken = getToken();
+    accessToken = getToken(configFile);
 
     CREATEMEMSTRUCT(authHeader, char);
     CATSTRTOMEMORYSTRUCT(authHeader, "Authorization: bearer ");
@@ -116,7 +116,7 @@ struct json_object * httpRequest(char * targetURL) {
 
     CREATEMEMSTRUCT(pageDL, char);
 
-    baseRequest(pageDL, targetURL, NULL, httpHeader);
+    baseRequest(pageDL, targetURL, NULL, httpHeader, configFile);
 
     if (pageDL->size == 1) {
         printf("Error in httpRequest().\n");

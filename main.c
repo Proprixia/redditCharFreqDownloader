@@ -1,11 +1,11 @@
 #include "parseComments.c"
 
-struct subredditStats getPost(char * url, struct memory * userText) {
+struct subredditStats getPost(char * url, struct memory * userText, struct json_object * configFile) {
     struct subredditStats stats;
     struct json_object * node;
     struct json_object * pageJSON;
 
-    pageJSON = httpRequest(url);
+    pageJSON = httpRequest(url, configFile);
 
     if (pageJSON != NULL) {
         json_pointer_get(pageJSON, "/0/data/children/0/data/selftext", &node);
@@ -16,7 +16,7 @@ struct subredditStats getPost(char * url, struct memory * userText) {
             }
     }
 
-    stats = parseComments(pageJSON, userText);
+    stats = parseComments(pageJSON, userText, configFile);
     }
 
     json_object_put(pageJSON);
@@ -24,7 +24,7 @@ struct subredditStats getPost(char * url, struct memory * userText) {
     return stats;
 };
 
-void getSubreddit(char * subredditName) {
+void getSubreddit(char * subredditName, struct json_object * configFile) {
     printf("%s\n", subredditName);
     char countStr[] = "&raw_json=1&count=100&after=";
     FILE * destFile;
@@ -57,8 +57,8 @@ void getSubreddit(char * subredditName) {
 
     char pathStr[35];
     
-    for (int j = 0; j < 4; j++) {
-        pageJSON = httpRequest(subredditURL->contents);
+    for (int j = 0; j < 1; j++) {
+        pageJSON = httpRequest(subredditURL->contents, configFile);
 
         if (pageJSON != NULL) {
             
@@ -79,7 +79,7 @@ void getSubreddit(char * subredditName) {
                         CATSTRTOMEMORYSTRUCT(pageURL, json_object_get_string(node));
                         CATSTRTOMEMORYSTRUCT(pageURL, "?raw_json=1");
 
-                        postStats = getPost(pageURL->contents, userText);
+                        postStats = getPost(pageURL->contents, userText, configFile);
 
                         stats.numComments += postStats.numComments;
         
@@ -114,7 +114,7 @@ void getSubreddit(char * subredditName) {
     }
 
     CREATEMEMSTRUCT(outputFileName, char);
-    CATSTRTOMEMORYSTRUCT(outputFileName, "./Out/");    
+    CATSTRTOMEMORYSTRUCT(outputFileName, json_object_get_string(json_object_object_get(configFile, "outDirectory")));    
     CATSTRTOMEMORYSTRUCT(outputFileName, subredditName);
     destFile = fopen((char *) outputFileName->contents, "w");
     fputs(userText->contents, destFile);
@@ -124,7 +124,7 @@ void getSubreddit(char * subredditName) {
     statsJSON = json_object_new_object();
     json_object_object_add(statsJSON, "num_comments", json_object_new_int(stats.numComments));
     CREATEMEMSTRUCT(statsFileName, char);
-    CATSTRTOMEMORYSTRUCT(statsFileName, "./Out/");
+    CATSTRTOMEMORYSTRUCT(statsFileName, json_object_get_string(json_object_object_get(configFile, "outDirectory")));
     CATSTRTOMEMORYSTRUCT(statsFileName, subredditName);
     CATSTRTOMEMORYSTRUCT(statsFileName, "Stats.json");
     json_object_to_file(statsFileName->contents, statsJSON);
@@ -143,7 +143,9 @@ int main() {
     struct memory * fileText;
     struct memory * subredditName;
 
-    subredditsFile = fopen("subreddits", "r");
+    struct json_object * configFile = json_object_from_file("config.json");
+
+    subredditsFile = fopen(json_object_get_string(json_object_object_get(configFile, "subredditsFile")), "r");
     fseek(subredditsFile, 0, SEEK_END);
     fileSize = ftell(subredditsFile);
     rewind(subredditsFile);
@@ -166,7 +168,7 @@ int main() {
             if (* (char *) (fileText->contents + i - 1) == '\n') {
                 break;
             } else {
-                getSubreddit((char *) subredditName->contents);
+                getSubreddit((char *) subredditName->contents, configFile);
                 subredditName->size = 1;
                 subredditName->contents = realloc(subredditName->contents, subredditName->size);
             }
@@ -181,4 +183,5 @@ int main() {
     fclose(subredditsFile);
     FREEMEMSTRUCT(fileText);
     FREEMEMSTRUCT(subredditName);
+    json_object_put(configFile);
 }

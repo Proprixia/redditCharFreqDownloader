@@ -62,7 +62,7 @@ struct memory * genPathStr(struct memory * pathArray, const char * attribute) {
     return pathStr;
 }
 
-struct subredditStats parseComments(struct json_object * pageJSON, struct memory * commentsText) {
+struct subredditStats parseComments(struct json_object * pageJSON, struct memory * commentsText, struct json_object * configFile) {
     struct subredditStats stats = {0};
     stats.numComments = 0;
     // Comment parsing algorithm: appends the text of every comment in the post (or at the first 11 deep) to the commentsText string.
@@ -220,7 +220,7 @@ struct subredditStats parseComments(struct json_object * pageJSON, struct memory
                         * (char *) (moreCommentsURL->contents + moreCommentsURL->size - 2) = '\0';
                     }
 
-                    struct json_object * moreCommentsPageJSON = httpRequest(moreCommentsURL->contents);
+                    struct json_object * moreCommentsPageJSON = httpRequest(moreCommentsURL->contents, configFile);
 
                     if (moreCommentsPageJSON != NULL) {
                         json_pointer_get(moreCommentsPageJSON, "/json/data/things", &node);

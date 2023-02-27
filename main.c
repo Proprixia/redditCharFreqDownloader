@@ -26,9 +26,12 @@ struct subredditStats getPost(char * url, struct memory * userText, struct json_
 
 void getSubreddit(char * subredditName, struct json_object * configFile) {
     printf("%s\n", subredditName);
+
     char countStr[] = "&raw_json=1&count=100&after=";
     FILE * destFile;
     int dist;
+    int maxPosts;
+    int numPosts;
     int subURLSizeBeforeModification;
     struct json_object * node;
     struct json_object * pageJSON;
@@ -43,6 +46,9 @@ void getSubreddit(char * subredditName, struct json_object * configFile) {
     struct subredditStats stats;
 
     stats.numComments = 0;
+    numPosts = 0;
+    maxPosts = json_object_get_int(json_object_object_get(configFile, "maxPostsPerSubreddit"));
+    printf("maxPosts = %d\n", maxPosts);
 
     CREATEMEMSTRUCT(subredditURL, char);
     CREATEMEMSTRUCT(permalink, char);
@@ -57,7 +63,7 @@ void getSubreddit(char * subredditName, struct json_object * configFile) {
 
     char pathStr[35];
     
-    for (int j = 0; j < 1; j++) {
+    for (int j = 0; numPosts < maxPosts; j++) {
         pageJSON = httpRequest(subredditURL->contents, configFile);
 
         if (pageJSON != NULL) {
@@ -66,7 +72,7 @@ void getSubreddit(char * subredditName, struct json_object * configFile) {
             json_pointer_get(pageJSON, "/data/dist", &node);
             if (json_object_is_type(node, json_type_int)) {
                 dist = json_object_get_int(node);
-                for (int i = 0; i < dist; i++) {
+                for (int i = 0; (i < dist) && (numPosts < maxPosts); i++) {
                     sprintf(pathStr, "/data/children/%d/data/permalink", i);
 
                     FREEMEMSTRUCT(pageURL);
@@ -80,6 +86,8 @@ void getSubreddit(char * subredditName, struct json_object * configFile) {
                         CATSTRTOMEMORYSTRUCT(pageURL, "?raw_json=1");
 
                         postStats = getPost(pageURL->contents, userText, configFile);
+                        numPosts ++;
+                        printf("numPosts = %d, maxPosts = %d\n", numPosts, maxPosts);
 
                         stats.numComments += postStats.numComments;
         

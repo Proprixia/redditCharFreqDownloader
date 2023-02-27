@@ -69,7 +69,7 @@ struct subredditStats parseComments(struct json_object * pageJSON, struct memory
     if (json_object_is_type(pageJSON, json_type_array)) {
     if (json_object_array_length(pageJSON) > 1) {
         int depth;
-        int numComments;
+        u_int16_t maxComments;
         int risingUp;
         int rootDirLen;
         int workingDirLen; 
@@ -87,7 +87,12 @@ struct subredditStats parseComments(struct json_object * pageJSON, struct memory
         depth = 0;
         risingUp = 0;
 
-        while (1) {
+        maxComments = json_object_get_int(json_object_object_get(configFile, "maxCommentsPerPost"));
+        if (maxComments == 0) {
+            maxComments = UINT16_MAX;
+        }
+
+        while (stats.numComments < maxComments) {
             // Finds the replies object to determine if there are replies to the current node.
             NODEFROMARRAYANDATTRIBUTE(pathArray, "/replies");
 
@@ -114,7 +119,6 @@ struct subredditStats parseComments(struct json_object * pageJSON, struct memory
                     // Concatenate the body of the current node to the commentsText->contents string.
                     NODEFROMARRAYANDATTRIBUTE(pathArray, "/body");
                     COPYTOCOMMENTSTEXT();
-                    numComments += 1;
 
                     // Change the cursor to point to the current node's oldest sibling.
                     * (int *) (pathArray->contents + (depth * sizeof(int))) += 1;
@@ -123,7 +127,6 @@ struct subredditStats parseComments(struct json_object * pageJSON, struct memory
                     // Concatenate the body of the current node to the commentsText->contents string.
                     NODEFROMARRAYANDATTRIBUTE(pathArray, "/body");
                     COPYTOCOMMENTSTEXT();
-                    numComments += 1;
 
                     depth --;
                     if (depth < 0) { // Triggers when cursor was on a tier one comment with no unexplored children and no younger siblings. In other words, the last comment to be procesed.
@@ -156,14 +159,14 @@ struct subredditStats parseComments(struct json_object * pageJSON, struct memory
         free(pathArray->contents);
         free(pathArray);
 
-        printf("rootDirLen-1=%d\n", rootDirLen - 1);
+        // printf("rootDirLen-1=%d\n", rootDirLen - 1);
         json_pointer_getf(pageJSON, &node, "/1/data/children/%d/kind", rootDirLen - 1);
         if (strncmp(json_object_get_string(node), "more", 4) == 0) {
-            printf("Getting more.\n");
+            // printf("Getting more.\n");
             json_pointer_getf(pageJSON, &node, "/1/data/children/%d/data/children", rootDirLen - 1);
             
             if (json_object_is_type(node, json_type_array)) {
-                printf("Json is type array!\n");
+                // printf("Json is type array!\n");
                 int numMoreComments = json_object_array_length(node);
                 struct memory * moreCommentIDs;
                 CREATEMEMSTRUCT(moreCommentIDs, char);
@@ -182,7 +185,7 @@ struct subredditStats parseComments(struct json_object * pageJSON, struct memory
                 commentIDsParameter->contents = realloc(commentIDsParameter->contents, commentIDsParameter->size);
                 memset(commentIDsParameter->contents, '\0', commentIDsParameter->size);
                 int i = 0;
-                for (; i < moreCommentIDs->size; i++) {
+                for (; (i < moreCommentIDs->size) && stats.numComments < maxComments; i++) {
                     strncat((char *) commentIDsParameter->contents, (char *) (moreCommentIDs->contents + i), 1);
                     if ((i % 7 == 6) && (i != (moreCommentIDs->size - 1))) {
                         strcat((char *) commentIDsParameter->contents, ",");
@@ -199,22 +202,23 @@ struct subredditStats parseComments(struct json_object * pageJSON, struct memory
                 CATSTRTOMEMORYSTRUCT(moreCommentsURL, "&children=");
                 
                 struct json_tokener * deepTokener = json_tokener_new_ex(256);
-                printf("numMoreComments: %d\n", numMoreComments);
+                // printf("numMoreComments: %d\n", numMoreComments);
 
                 int newDataSize;
 
                 for (int j = 0; j < (int) (ceil(numMoreComments / 100) + 1); j++) {
-                    printf("j = %d\ncommentIDsParameter->size = %d\n", j, commentIDsParameter->size);
+                    // printf("j = %d\ncommentIDsParameter->size = %d\n", j, commentIDsParameter->size);
 
                     if (j < (int) (ceil(numMoreComments / 100))) {
                         newDataSize = 800;
                     } else {
                         newDataSize = (int) ceil(((commentIDsParameter->size / 8) % 100) * 8);
                     }
-                    printf("newDataSize = %d\n", newDataSize);
+                    // printf("newDataSize = %d\n", newDataSize);
 
                     moreCommentsURL->size += newDataSize;
                     moreCommentsURL->contents = realloc(moreCommentsURL->contents, moreCommentsURL->size);
+                    memset(moreCommentsURL->contents + moreCommentsURL->size - newDataSize, '\0', newDataSize);
                     strncat((char *) moreCommentsURL->contents, (char *) commentIDsParameter->contents + (j * 800), newDataSize);
                     if (* (char *) (moreCommentsURL->contents + moreCommentsURL->size - 2) == ',') {
                         * (char *) (moreCommentsURL->contents + moreCommentsURL->size - 2) = '\0';

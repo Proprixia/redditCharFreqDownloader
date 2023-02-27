@@ -20,6 +20,10 @@ To use the program, create and/or edit the "config.json" file in the execution d
 + "tokenFile": The path of a JSON file containing the downloaded token for the program.
 + "loginFile": The path of a JSON file containing the login information (username, password, and user-agent) for your bot.
 
+In addition, configure the following options:
++ "maxPostsPerSubreddit": The maximum number of posts the program will read from an individual subreddit.
++ "maxCommentsPerPost": The maximum number of comments the program will download from an individual post (if zero, this is unlmited).
+
 Finish creating the necessary files to run the program, as written in your config file.
 
 Next, import and setup the required libraries. These are [json-c](https://github.com/json-c/json-c) and [libcurl](https://curl.se/libcurl). These libraries are crucial to use the program.

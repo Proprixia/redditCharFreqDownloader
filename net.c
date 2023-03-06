@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <curl/curl.h>
 #include "macros.c"
+#include <unistd.h>
 
 struct memory {
     void * contents;

@@ -1,4 +1,4 @@
-#include "parseComments.c"
+#include "checkConfig.c"
 
 struct subredditStats getPost(char * url, struct memory * userText, struct json_object * configFile) {
     struct subredditStats stats;
@@ -152,6 +152,7 @@ int main() {
     struct memory * subredditName;
 
     struct json_object * configFile = json_object_from_file("config.json");
+    checkConfig(configFile);
 
     subredditsFile = fopen(json_object_get_string(json_object_object_get(configFile, "subredditsFile")), "r");
     fseek(subredditsFile, 0, SEEK_END);

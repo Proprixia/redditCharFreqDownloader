@@ -1,10 +1,8 @@
 {
-    // I/O File Settings
     "outDirectory": "./Out/", 
     "subredditsFile": "./subreddits", 
     "tokenFile": "./token.json", 
     "loginFile": "./login.json",
-    // Behavior Settings
     "maxPostsPerSubreddit": 100,
     "maxCommentsPerPost": 0
 }

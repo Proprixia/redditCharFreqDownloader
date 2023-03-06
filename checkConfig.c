@@ -1,4 +1,5 @@
 #include "parseComments.c"
+#include <unistd.h>
 
 void checkConfig(struct json_object * configFile) {
     int configReady = 1;
